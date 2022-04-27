@@ -19,4 +19,9 @@ body.path-question-type .form-group .sr-only:not(legend):not([for="id_category"]
     border-top-right-radius: 0;
     border-bottom-left-radius: 0.5rem;
     border-bottom-right-radius: 0.5rem;
+    padding: 2px 0 0 9px !important;
+}
+
+.editor_atto_content_wrap {
+    margin-bottom: 0;
 }
