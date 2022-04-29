@@ -53,27 +53,32 @@ Y.namespace('M.atto_wordcount').Button = Y.Base.create('button', Y.M.editor_atto
         this.counterid = host.get('elementid') + '-word-count';
         this.counterid = this.counterid.replace(':', '-');
         this.counterElement = Y.Node.create('<span class="badge badge-light" id="' + this.counterid + '">0</span>');
-        wrapper.appendChild(
-            Y.Node.create('<div class="' + this.toolbar.getAttribute('class') + ' editor_atto_toolbar_bottom p-0 d-flex">' +
-                '<div class="d-inline-flex p-1"><strong>'
-                + M.util.get_string('words', 'atto_wordcount') + ': ' +
-                '</strong><span id="' + this.counterid + '">0</span>' +
-                '</div></div>'));
-                this.wordlimit = this.get('wordlimits')[editorInstance];
-                if (this.wordlimit) {
-                    var seperatorField = document.createElement('span');
-                    seperatorField.innerHTML = '/';
-                    document.getElementById(this.counterid).parentNode.appendChild(seperatorField);
-                    var wordLimitField = document.createElement('span');
-                    wordLimitField.innerHTML = this.wordlimit;
-                    document.getElementById(this.counterid).parentNode.appendChild(wordLimitField);
-                }
-                editorInstance += 1;
-        this._count(host.get('editor'));
-        this.get('host').on('pluginsloaded', function() {
-            // Adds the current value to the stack.
-            this.get('host').on('atto:selectionchanged', this._count, this);
-        }, this);
+        this.wordlimit = this.get('wordlimits')[editorInstance];
+
+        if(this.wordlimit !== 0 && this.wordlimit!= null){
+            wrapper.appendChild(
+
+                Y.Node.create('<div class="' + this.toolbar.getAttribute('class') + ' editor_atto_toolbar_bottom p-0 d-flex">' +
+                    '<div class="d-inline-flex p-1"><strong>'
+                    + M.util.get_string('words', 'atto_wordcount') + ': ' +
+                    '</strong><span id="' + this.counterid + '">0</span>' +
+                    '</div></div>'));
+                    
+                    if (this.wordlimit) {
+                        var seperatorField = document.createElement('span');
+                        seperatorField.innerHTML = '/';
+                        document.getElementById(this.counterid).parentNode.appendChild(seperatorField);
+                        var wordLimitField = document.createElement('span');
+                        wordLimitField.innerHTML = this.wordlimit;
+                        document.getElementById(this.counterid).parentNode.appendChild(wordLimitField);
+                    }
+                    editorInstance += 1;
+            this._count(host.get('editor'));
+            this.get('host').on('pluginsloaded', function() {
+                // Adds the current value to the stack.
+                this.get('host').on('atto:selectionchanged', this._count, this);
+            }, this);
+        }
     },
     _count: function(editor) {
         var wordcount = this;

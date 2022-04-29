@@ -121,9 +121,10 @@ class wordlimit {
             // The page in the URL Params is starting with zero, in the database they start with 1. So there is an offset.
             ( null === $page ) ? $page = "1" : $page = intval( $page ) + 1;
             $wordlimits = self::get_wordlimits_for_essay_in_quiz( $quizid, $page );
+            return $wordlimits;
         }
 
-        return $wordlimits;
+        return 0;
     }
 
 }
