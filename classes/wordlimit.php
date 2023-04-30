@@ -79,6 +79,9 @@ class wordlimit {
         // Make a database query to see if a maxwordlimit is set on this question.
         // We need to also select slot, because the slot is unique here: there might be multiple
         // editors with the same wordlimit on the same page, and then only the first would be returned.
+		
+		// This needs to be FIXED. {quiz_slots}.questionid no longer exists in Moodle 4
+		
         $sql = "SELECT slot, maxwordlimit
                 FROM {qtype_essay_options}
                 INNER JOIN {quiz_slots}
@@ -112,7 +115,8 @@ class wordlimit {
             // We can return now and don't need to check for a quiz page.
             return $wordlimits;
         }
-
+		// Quiz changed in moodle 4. This has to be re-engineered
+		/*
         if (strpos($PAGE->url->get_path(), '/mod/quiz/attempt.php')!== false && "mod-quiz-attempt" === $PAGE->pagetype ) {
             // The quiz-id is the current course-module id.
             $quizid = intval( $PAGE->cm->instance );
@@ -123,7 +127,7 @@ class wordlimit {
             $wordlimits = self::get_wordlimits_for_essay_in_quiz( $quizid, $page );
             return $wordlimits;
         }
-
+		*/
         return 0;
     }
 
