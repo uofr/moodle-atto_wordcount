@@ -74,22 +74,39 @@ class wordlimit {
      * @param string  $page the number of the page as in the database, offset +1 in the frontend.
      * @return array  $wordlimits
      */
-    protected static function get_wordlimits_for_essay_in_quiz($quizid, $page) {
-        global $DB;
-        // Make a database query to see if a maxwordlimit is set on this question.
-        // We need to also select slot, because the slot is unique here: there might be multiple
-        // editors with the same wordlimit on the same page, and then only the first would be returned.
-		
-		// This needs to be FIXED. {quiz_slots}.questionid no longer exists in Moodle 4
-		
-        $sql = "SELECT slot, maxwordlimit
-                FROM {qtype_essay_options}
-                INNER JOIN {quiz_slots}
-                ON {qtype_essay_options}.questionid = {quiz_slots}.questionid
-                WHERE quizid = ? AND page = ?
-                ORDER BY slot";
-        $wordlimits = $DB->get_records_sql( $sql, [$quizid, $page] );
-        $wordlimits = array_column( $wordlimits, 'maxwordlimit' );
+    protected static function get_wordlimits_for_essay_in_quiz($quizid, $page, $attemptid) {
+        global $DB, $USER;
+
+        $attempt = $DB->get_record('quiz_attempts', ['id' => $attemptid, 'userid' => $USER->id]);
+        if (empty($attempt) || !($attempt instanceof \stdClass)) {
+            return [];
+        }
+
+        $slots = self::get_slots_from_attempt($attempt);
+        if (empty($slots) || !array_key_exists($page, $slots)) {
+            return [];
+        }
+
+        $pageslots = $slots[$page];
+        if (empty($pageslots) || !is_array($pageslots)) {
+            return [];
+        }
+
+        $qattempts = self::get_question_attempts_by_slot($attempt, $pageslots);
+
+        $wordlimits = [];
+        foreach ($pageslots as $slot) {
+            if (array_key_exists($slot, $qattempts)) {
+                $qattempt = $qattempts[$slot];
+                if (!empty($qattempt) && ($qattempt instanceof \stdClass) && property_exists($qattempt, 'questionid')) {
+                    $essayquestion = $DB->get_record('qtype_essay_options', ['questionid' => $qattempt->questionid]);
+                    if (!empty($essayquestion) && ($essayquestion instanceof \stdClass) && property_exists($essayquestion, 'maxwordlimit')) {
+                        $wordlimits[] = $essayquestion->maxwordlimit;
+                    }
+                }
+            }
+        }
+
         return $wordlimits;
     }
 
@@ -97,7 +114,7 @@ class wordlimit {
     /**
      * Get the wordlimit depending on the type of page which is beein edited.
      *
-     * @return  array $wordlimits
+     * @return  array|int $wordlimits
      */
     public static function get_wordlimits() {
 
@@ -115,20 +132,81 @@ class wordlimit {
             // We can return now and don't need to check for a quiz page.
             return $wordlimits;
         }
-		// Quiz changed in moodle 4. This has to be re-engineered
-		/*
-        if (strpos($PAGE->url->get_path(), '/mod/quiz/attempt.php')!== false && "mod-quiz-attempt" === $PAGE->pagetype ) {
+
+        if (strpos($PAGE->url->get_path(), '/mod/quiz/attempt.php') !== false && "mod-quiz-attempt" === $PAGE->pagetype) {
             // The quiz-id is the current course-module id.
-            $quizid = intval( $PAGE->cm->instance );
+            $quizid = intval($PAGE->cm->instance);
             // See on which page of the quiz we are.
-            $page = $PAGE->url->get_param( 'page' );
-            // The page in the URL Params is starting with zero, in the database they start with 1. So there is an offset.
-            ( null === $page ) ? $page = "1" : $page = intval( $page ) + 1;
-            $wordlimits = self::get_wordlimits_for_essay_in_quiz( $quizid, $page );
+            $page = $PAGE->url->get_param('page');
+            $page = empty($page) ? 0 : intval($page);
+            $attemptid = $PAGE->url->get_param('attempt');
+            $wordlimits = self::get_wordlimits_for_essay_in_quiz($quizid, $page, $attemptid);
             return $wordlimits;
         }
-		*/
+
         return 0;
+    }
+
+    /**
+     * Returns slots associated with a given quiz attempt.
+     * Slots can be used to find questions (and therefore, the word limit!).
+     * 
+     * @param \stdClass $attempt - Row from quiz_attempts table.
+     * @return array[] - Array of slots indexed by page number. In the order they appear to the user.
+     */
+    private static function get_slots_from_attempt(\stdClass $attempt) {
+        if (!property_exists($attempt, 'layout')) {
+            return [];
+        }
+        else if (empty($attempt->layout) || !is_string($attempt->layout)) {
+            return [];
+        }
+        else if (strpos($attempt->layout, ',') === false) {
+            return [];
+        }
+
+        $layout = explode(',', $attempt->layout);
+        $slots = [];
+        $page = 0;
+
+        foreach ($layout as $slotnumber) {
+            if ($slotnumber == 0) { // A page break is indicated by a slot number of 0.
+                $page = $page + 1;
+            }
+            else { // Otherwise, append $slotnumber to $slots[$page]
+                $slots[$page][] = $slotnumber;
+            }
+        }
+
+        return $slots;
+    }
+
+    private static function get_question_attempts_by_slot(\stdClass $attempt, array $slots) {
+        global $DB;
+
+        if (!property_exists($attempt, 'uniqueid') || empty($attempt->uniqueid)) {
+            return [];
+        }
+
+        list($insql, $inparams) = $DB->get_in_or_equal($slots);
+        $sqlparams = array_merge($inparams, [$attempt->uniqueid]);
+        $sqlquery = "SELECT * FROM {question_attempts} qa
+                        WHERE qa.slot $insql
+                        AND qa.questionusageid = ?";
+
+        $questionattempts = $DB->get_records_sql($sqlquery, $sqlparams);
+        if (empty($questionattempts)) {
+            return [];
+        }
+
+        $questionattemptsbyslot = [];
+        foreach ($questionattempts as $qattempt) {
+            if (($qattempt instanceof \stdClass) && property_exists($qattempt, 'slot') && !empty($qattempt->slot)) {
+                $questionattemptsbyslot[$qattempt->slot] = $qattempt;
+            }
+        }
+
+        return $questionattemptsbyslot;
     }
 
 }

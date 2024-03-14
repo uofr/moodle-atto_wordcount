@@ -56,25 +56,25 @@ Y.namespace('M.atto_wordcount').Button = Y.Base.create('button', Y.M.editor_atto
         this.counterid = this.counterid.replace(':', '-');
         this.counterElement = Y.Node.create('<span class="badge badge-light" id="' + this.counterid + '">0</span>');
         this.wordlimit = this.get('wordlimits')[editorInstance];
+        editorInstance += 1;
 
-        if(this.wordlimit !== 0 && this.wordlimit!= null){
+        if(this.wordlimit !== 0 && this.wordlimit !== null && this.wordlimit !== undefined) {
             wrapper.appendChild(
-
                 Y.Node.create('<div class="' + this.toolbar.getAttribute('class') + ' editor_atto_toolbar_bottom p-0 d-flex">' +
                     '<div class="d-inline-flex p-1"><strong>'
                     + M.util.get_string('words', 'atto_wordcount') + ': ' +
                     '</strong><span id="' + this.counterid + '">0</span>' +
                     '</div></div>'));
-                    
-                    if (this.wordlimit) {
-                        var seperatorField = document.createElement('span');
-                        seperatorField.innerHTML = '/';
-                        document.getElementById(this.counterid).parentNode.appendChild(seperatorField);
-                        var wordLimitField = document.createElement('span');
-                        wordLimitField.innerHTML = this.wordlimit;
-                        document.getElementById(this.counterid).parentNode.appendChild(wordLimitField);
-                    }
-                    editorInstance += 1;
+
+            if (this.wordlimit) {
+                var seperatorField = document.createElement('span');
+                seperatorField.innerHTML = '/';
+                document.getElementById(this.counterid).parentNode.appendChild(seperatorField);
+                var wordLimitField = document.createElement('span');
+                wordLimitField.innerHTML = this.wordlimit;
+                document.getElementById(this.counterid).parentNode.appendChild(wordLimitField);
+            }
+
             this._count(host.get('editor'));
             this.get('host').on('pluginsloaded', function() {
                 // Adds the current value to the stack.
